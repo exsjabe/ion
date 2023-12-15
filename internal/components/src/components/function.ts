@@ -478,21 +478,25 @@ export class Function extends ComponentResource {
           recursive: true,
         });
 
-        await new Promise(async (resolve, reject) => {
-          const ws = fs.createWriteStream(zipPath);
-          const archive = archiver("zip");
-          archive.on("warning", reject);
-          archive.on("error", reject);
-          // archive has been finalized and the output file descriptor has closed, resolve promise
-          // this has to be done before calling `finalize` since the events may fire immediately after.
-          // see https://www.npmjs.com/package/archiver
-          ws.once("close", () => {
-            resolve(zipPath);
-          });
-          archive.pipe(ws);
 
-          archive.glob("**", { cwd: bundle, dot: true });
-          await archive.finalize();
+        const archive = archiver("zip");
+        await new Promise(async (resolve, reject) => {
+          try {
+            const ws = fs.createWriteStream(zipPath);
+            archive.on('warning', reject);
+            archive.on('error', reject);
+            // archive has been finalized and the output file descriptor has closed, resolve promise
+            // this has to be done before calling `finalize` since the events may fire immediately after.
+            // see https://www.npmjs.com/package/archiver
+            ws.once('close', () => {
+              resolve(zipPath);
+            });
+            archive.pipe(ws);
+            archive.glob('**', {cwd: bundle, dot: true});
+            await archive.finalize()
+          } catch (e) {
+            reject(e);
+          }
         });
 
         return zipPath;
